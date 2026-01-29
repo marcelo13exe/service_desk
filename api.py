@@ -1,152 +1,139 @@
-from fastapi import FastAPI, HTTPException, Depends, Form
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
-from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from passlib.hash import bcrypt
 
-from database import init_db
-from models import ChamadoCreate, ComentarioCreate
 from services_layer import (
-    registrar_usuario,
-    login_usuario,
     abrir_chamado,
     consultar_chamado,
-    fechar_chamado,
     adicionar_comentario_chamado,
-    listar_meus_chamados
+    fechar_chamado
 )
-from security import get_usuario_logado
+
+from storage import (
+    criar_usuario,
+    buscar_usuario_por_email
+)
+
+from database import init_db
+
+app = FastAPI(title="Service Desk API")
 
 
-app = FastAPI()
+# ✅ Inicializa banco quando subir
+@app.on_event("startup")
+def startup():
+    init_db()
 
+
+# -------------------------------
+# ✅ HOME
+# -------------------------------
 @app.get("/")
 def home():
-    return {"status": "Service Desk API rodando com sucesso 🚀"}
-
-templates = Jinja2Templates(directory="templates")
-import os
-
-if os.path.isdir("static"):
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    return {"status": "Service Desk rodando no Render 🚀"}
 
 
-# ========= MODELS =========
+# -------------------------------
+# ✅ MODELOS (Pydantic)
+# -------------------------------
+
 class UsuarioCreate(BaseModel):
     nome: str
     email: str
     senha: str
 
 
-class Login(BaseModel):
+class LoginData(BaseModel):
     email: str
     senha: str
 
 
-# ========= AUTH =========
-@app.post("/register")
-def register(dados: UsuarioCreate):
-    registrar_usuario(dados.nome, dados.email, dados.senha)
-    return {"mensagem": "Usuário criado com sucesso"}
+class ChamadoCreate(BaseModel):
+    descricao: str
+    prioridade: str
+    usuario_id: int
+
+
+class ComentarioData(BaseModel):
+    texto: str
+
+
+# -------------------------------
+# ✅ USUÁRIOS
+# -------------------------------
+
+@app.post("/usuarios")
+def registrar_usuario(dados: UsuarioCreate):
+
+    existente = buscar_usuario_por_email(dados.email)
+    if existente:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    senha_hash = bcrypt.hash(dados.senha)
+
+    criar_usuario(dados.nome, dados.email, senha_hash)
+
+    return {"msg": "Usuário criado com sucesso"}
 
 
 @app.post("/login")
-def login(dados: Login):
-    token = login_usuario(dados.email, dados.senha)
-    if not token:
-        raise HTTPException(status_code=401, detail="Credenciais inválidas")
-    return {"access_token": token, "token_type": "bearer"}
+def login(dados: LoginData):
+
+    usuario = buscar_usuario_por_email(dados.email)
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if not bcrypt.verify(dados.senha, usuario["senha_hash"]):
+        raise HTTPException(status_code=401, detail="Senha inválida")
+
+    return {"msg": "Login OK", "usuario_id": usuario["id"]}
 
 
-@app.get("/login")
-def tela_login(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+# -------------------------------
+# ✅ CHAMADOS
+# -------------------------------
 
-
-@app.post("/login-web")
-def login_web(request: Request, email: str = Form(...), senha: str = Form(...)):
-    token = login_usuario(email, senha)
-    if not token:
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "erro": "Email ou senha inválidos"}
-        )
-
-    response = RedirectResponse("/meus-chamados", status_code=302)
-    response.set_cookie("token", token, httponly=True)
-    return response
-
-
-# ========= STARTUP =========
-@app.on_event("startup")
-def startup():
-    init_db()
-
-
-# ========= CHAMADOS =========
 @app.post("/chamados")
-def criar_chamado(
-    dados: ChamadoCreate,
-    usuario_id: int = Depends(get_usuario_logado)
-):
+def criar_chamado(dados: ChamadoCreate):
+
     chamado_id = abrir_chamado(
-        dados.descricao,
-        dados.prioridade,
-        usuario_id
+        descricao=dados.descricao,
+        prioridade=dados.prioridade,
+        usuario_id=dados.usuario_id
     )
-    return {
-        "mensagem": "Chamado criado com sucesso",
-        "id": chamado_id
-    }
 
-
-@app.get("/meus-chamados")
-def meus_chamados(
-    request: Request,
-    usuario_id: int = Depends(get_usuario_logado)
-):
-    chamados = listar_meus_chamados(usuario_id)
-    return templates.TemplateResponse(
-        "meus_chamados.html",
-        {"request": request, "chamados": chamados}
-    )
+    return {"msg": "Chamado criado", "id": chamado_id}
 
 
 @app.get("/chamados/{id_chamado}")
-def consultar(
-    id_chamado: int,
-    usuario_id: int = Depends(get_usuario_logado)
-):
+def get_chamado(id_chamado: int):
+
     chamado = consultar_chamado(id_chamado)
+
     if not chamado:
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
+
     return chamado
 
 
-@app.post("/chamados/{id_chamado}/fechar")
-def fechar(
-    id_chamado: int,
-    usuario_id: int = Depends(get_usuario_logado)
-):
-    sucesso, msg = fechar_chamado(id_chamado)
-    if not sucesso:
-        raise HTTPException(status_code=403, detail=msg)
-    return {"mensagem": msg}
-
-
 @app.post("/chamados/{id_chamado}/comentario")
-def adicionar_comentario(
-    id_chamado: int,
-    dados: ComentarioCreate,
-    usuario_id: int = Depends(get_usuario_logado)
-):
-    sucesso = adicionar_comentario_chamado(
-        id_chamado,
-        dados.mensagem
-    )
-    if not sucesso:
+def comentar(id_chamado: int, dados: ComentarioData):
+
+    ok = adicionar_comentario_chamado(id_chamado, dados.texto)
+
+    if not ok:
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
 
-    return {"mensagem": "Comentário adicionado com sucesso"}
+    return {"msg": "Comentário adicionado"}
 
+
+@app.post("/chamados/{id_chamado}/fechar")
+def encerrar(id_chamado: int):
+
+    ok, msg = fechar_chamado(id_chamado)
+
+    if not ok:
+        raise HTTPException(status_code=400, detail=msg)
+
+    return {"msg": msg}
