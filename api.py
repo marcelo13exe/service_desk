@@ -22,7 +22,10 @@ from security import get_usuario_logado
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+import os
+
+if os.path.isdir("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # ========= MODELS =========
@@ -140,4 +143,5 @@ def adicionar_comentario(
     )
     if not sucesso:
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
+
     return {"mensagem": "Comentário adicionado com sucesso"}
