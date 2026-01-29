@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Meus Chamados</title>
+</head>
+<body>
+  <h2>Meus Chamados</h2>
+
+  <button onclick="logout()">Sair</button>
+  <br><br>
+
+  <ul id="lista"></ul>
+
+  <script>
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    async function carregarChamados() {
+      const response = await fetch("http://localhost:8000/chamados", {
+        headers: {
+          "Authorization": "Bearer " + token
+        }
+      });
+
+      if (!response.ok) {
+        alert("Sessão expirada");
+        logout();
+        return;
+      }
+
+      const chamados = await response.json();
+      const lista = document.getElementById("lista");
+      lista.innerHTML = "";
+
+      chamados.forEach(c => {
+        const item = document.createElement("li");
+        item.innerHTML = `
+          <strong>#${c.id}</strong><br>
+          ${c.descricao}<br>
+          Status: ${c.status}<br>
+          Prioridade: ${c.prioridade}
+          <hr>
+        `;
+        lista.appendChild(item);
+      });
+    }
+
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "login.html";
+    }
+
+    carregarChamados();
+  </script>
+</body>
+</html>
