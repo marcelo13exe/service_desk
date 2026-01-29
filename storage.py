@@ -1,4 +1,4 @@
-from database import get_connectionfrom database import get_connection
+from database import get_connection
 
 
 # ==========================
@@ -133,4 +133,5 @@ def inserir_comentario(chamado_id, mensagem):
     Comentário é um evento no histórico
     """
     inserir_historico(chamado_id, "comentario", mensagem)
+
 
