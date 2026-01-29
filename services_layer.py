@@ -1,4 +1,4 @@
-from datetime import datetime, timedeltafrom datetime import datetime, timedelta
+from datetime import datetime, timedelta
 
 from storage import (
     # usuários
@@ -163,4 +163,5 @@ def verificar_sla(chamado):
     prazo = datetime.strptime(chamado["prazo_sla"], "%Y-%m-%d %H:%M:%S")
 
     return "SLA ESTOURADO" if agora > prazo else "Dentro do SLA"
+
 
