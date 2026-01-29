@@ -11,16 +11,28 @@ def get_connection():
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        senha_hash TEXT NOT NULL,
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS chamados (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        descricao TEXT,
-        status TEXT,
-        prioridade TEXT,
-        data_abertura TEXT,
-        prazo_sla TEXT,
-        data_fechamento TEXT
+        descricao TEXT NOT NULL,
+        status TEXT NOT NULL,
+        prioridade TEXT NOT NULL,
+        data_abertura TEXT NOT NULL,
+        prazo_sla TEXT NOT NULL,
+        data_fechamento TEXT,
+        usuario_id INTEGER NOT NULL,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
     )
     """)
 
@@ -33,6 +45,8 @@ def init_db():
         mensagem TEXT
     )
     """)
+    
+    
 
     conn.commit()
     conn.close()

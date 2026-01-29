@@ -21,8 +21,8 @@ def criar_evento(tipo, mensagem):
         "mensagem": mensagem
     }
 
-
-def abrir_chamado(descricao, prioridade):
+# 🔑 AGORA RECEBE O USUÁRIO
+def abrir_chamado(descricao, prioridade, usuario_id):
     agora = datetime.now()
 
     horas_sla = SLA_POR_PRIORIDADE.get(prioridade, 48)
@@ -33,7 +33,8 @@ def abrir_chamado(descricao, prioridade):
         status="Aberto",
         prioridade=prioridade,
         data_abertura=agora.strftime("%Y-%m-%d %H:%M:%S"),
-        prazo_sla=prazo_sla.strftime("%Y-%m-%d %H:%M:%S")
+        prazo_sla=prazo_sla.strftime("%Y-%m-%d %H:%M:%S"),
+        usuario_id=usuario_id  # 🔥 vínculo correto
     )
 
     inserir_historico(

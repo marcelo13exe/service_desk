@@ -1,0 +1,110 @@
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Fundo geral */
+body {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    min-height: 100vh;
+    color: #e5e7eb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Card */
+.container {
+    background: #020617;
+    padding: 30px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+}
+
+/* Título */
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #38bdf8;
+}
+
+/* Inputs */
+input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 6px;
+    border: none;
+    background: #0f172a;
+    color: #e5e7eb;
+    font-size: 14px;
+}
+
+input::placeholder {
+    color: #94a3b8;
+}
+
+/* Botão */
+button {
+    width: 100%;
+    padding: 12px;
+    background: #38bdf8;
+    color: #020617;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #0ea5e9;
+}
+
+/* Mensagem de erro */
+.erro {
+    color: #f87171;
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* Lista de chamados */
+.chamados {
+    max-width: 700px;
+}
+
+.chamado {
+    background: #020617;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+
+.chamado strong {
+    font-size: 16px;
+    color: #38bdf8;
+}
+
+.status {
+    font-size: 13px;
+    margin-top: 5px;
+    color: #cbd5f5;
+}
+
+/* Link */
+a {
+    color: #38bdf8;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+a:hover {
+    text-decoration: underline;
+}
