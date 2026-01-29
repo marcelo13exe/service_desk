@@ -21,6 +21,10 @@ from security import get_usuario_logado
 
 app = FastAPI()
 
+@app.get("/")
+def home():
+    return {"status": "Service Desk API rodando com sucesso 🚀"}
+
 templates = Jinja2Templates(directory="templates")
 import os
 
@@ -145,3 +149,4 @@ def adicionar_comentario(
         raise HTTPException(status_code=404, detail="Chamado não encontrado")
 
     return {"mensagem": "Comentário adicionado com sucesso"}
+
