@@ -1,7 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
+
 from passlib.hash import bcrypt
 
+# ✅ Services
 from services_layer import (
     abrir_chamado,
     consultar_chamado,
@@ -9,32 +15,86 @@ from services_layer import (
     fechar_chamado
 )
 
+# ✅ Storage
 from storage import (
     criar_usuario,
     buscar_usuario_por_email
 )
 
+# ✅ Database
 from database import init_db
 
-app = FastAPI(title="Service Desk API")
+
+# -------------------------------
+# 🚀 APP
+# -------------------------------
+app = FastAPI(title="Service Desk Web")
+
+templates = Jinja2Templates(directory="templates")
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# ✅ Inicializa banco quando subir
 @app.on_event("startup")
 def startup():
     init_db()
 
 
 # -------------------------------
-# ✅ HOME
+# ✅ HOME HTML
 # -------------------------------
-@app.get("/")
-def home():
-    return {"status": "Service Desk rodando no Render 🚀"}
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 # -------------------------------
-# ✅ MODELOS (Pydantic)
+# ✅ ROTAS HTML
+# -------------------------------
+
+@app.get("/abrir", response_class=HTMLResponse)
+def tela_abrir(request: Request):
+    return templates.TemplateResponse("abrir_chamado.html", {"request": request})
+
+
+@app.post("/abrir", response_class=HTMLResponse)
+def abrir(
+    request: Request,
+    descricao: str = Form(...),
+    prioridade: str = Form(...),
+    usuario_id: int = Form(...)
+):
+    chamado_id = abrir_chamado(descricao, prioridade, usuario_id)
+
+    return templates.TemplateResponse(
+        "abrir_chamado.html",
+        {
+            "request": request,
+            "msg": f"Chamado aberto com sucesso! ID: {chamado_id}"
+        }
+    )
+
+
+@app.get("/consultar", response_class=HTMLResponse)
+def tela_consultar(request: Request):
+    return templates.TemplateResponse("consultar.html", {"request": request})
+
+
+@app.post("/consultar", response_class=HTMLResponse)
+def consultar(
+    request: Request,
+    id_chamado: int = Form(...)
+):
+    chamado = consultar_chamado(id_chamado)
+
+    return templates.TemplateResponse(
+        "consultar.html",
+        {"request": request, "chamado": chamado}
+    )
+
+
+# -------------------------------
+# ✅ MODELOS JSON (API)
 # -------------------------------
 
 class UsuarioCreate(BaseModel):
@@ -48,18 +108,8 @@ class LoginData(BaseModel):
     senha: str
 
 
-class ChamadoCreate(BaseModel):
-    descricao: str
-    prioridade: str
-    usuario_id: int
-
-
-class ComentarioData(BaseModel):
-    texto: str
-
-
 # -------------------------------
-# ✅ USUÁRIOS
+# ✅ API USUÁRIOS
 # -------------------------------
 
 @app.post("/usuarios")
@@ -88,52 +138,3 @@ def login(dados: LoginData):
         raise HTTPException(status_code=401, detail="Senha inválida")
 
     return {"msg": "Login OK", "usuario_id": usuario["id"]}
-
-
-# -------------------------------
-# ✅ CHAMADOS
-# -------------------------------
-
-@app.post("/chamados")
-def criar_chamado(dados: ChamadoCreate):
-
-    chamado_id = abrir_chamado(
-        descricao=dados.descricao,
-        prioridade=dados.prioridade,
-        usuario_id=dados.usuario_id
-    )
-
-    return {"msg": "Chamado criado", "id": chamado_id}
-
-
-@app.get("/chamados/{id_chamado}")
-def get_chamado(id_chamado: int):
-
-    chamado = consultar_chamado(id_chamado)
-
-    if not chamado:
-        raise HTTPException(status_code=404, detail="Chamado não encontrado")
-
-    return chamado
-
-
-@app.post("/chamados/{id_chamado}/comentario")
-def comentar(id_chamado: int, dados: ComentarioData):
-
-    ok = adicionar_comentario_chamado(id_chamado, dados.texto)
-
-    if not ok:
-        raise HTTPException(status_code=404, detail="Chamado não encontrado")
-
-    return {"msg": "Comentário adicionado"}
-
-
-@app.post("/chamados/{id_chamado}/fechar")
-def encerrar(id_chamado: int):
-
-    ok, msg = fechar_chamado(id_chamado)
-
-    if not ok:
-        raise HTTPException(status_code=400, detail=msg)
-
-    return {"msg": msg}
