@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
+
 
 from pydantic import BaseModel
 
@@ -46,6 +48,35 @@ def startup():
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/login", response_class=HTMLResponse)
+def tela_login(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login", response_class=HTMLResponse)
+def login_web(
+    request: Request,
+    email: str = Form(...),
+    senha: str = Form(...)
+):
+    usuario = buscar_usuario_por_email(email)
+
+    if not usuario:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "erro": "Usuário não encontrado"}
+        )
+
+    if not bcrypt.verify(senha, usuario["senha_hash"]):
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "erro": "Senha inválida"}
+        )
+
+    # ✅ Login OK → Redireciona para home
+    response = RedirectResponse("/", status_code=302)
+    response.set_cookie("usuario_id", str(usuario["id"]))
+    return response
 
 
 # -------------------------------
