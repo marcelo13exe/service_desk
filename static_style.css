@@ -108,3 +108,11 @@ a {
 a:hover {
     text-decoration: underline;
 }
+
+.erro {
+    background: #f8d7da;
+    padding: 10px;
+    border-radius: 8px;
+    color: #721c24;
+    margin-top: 15px;
+}
