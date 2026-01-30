@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Abrir Chamado</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>📌 Abrir Chamado</h2>
+
+  <form method="post">
+
+    <label>Descrição:</label>
+    <input type="text" name="descricao" required>
+
+    <label>Prioridade:</label>
+    <select name="prioridade">
+      <option>Baixa</option>
+      <option>Média</option>
+      <option>Alta</option>
+      <option>Crítica</option>
+    </select>
+
+    <label>ID do Usuário:</label>
+    <input type="number" name="usuario_id" required>
+
+    <button class="btn" type="submit">Abrir Chamado</button>
+  </form>
+
+  <a href="/" class="link">⬅ Voltar</a>
+</div>
+
+</body>
+</html>

@@ -157,3 +157,9 @@ def fechar_chamado(id_chamado, usuario_id):
 
 def verificar_sla(chamado):
     if chamado["status"] == "Fechado":
+        return "Encerrado"
+
+    agora = datetime.now()
+    prazo = datetime.strptime(chamado["prazo_sla"], "%Y-%m-%d %H:%M:%S")
+
+    return "SLA ESTOURADO" if agora > prazo else "Dentro do SLA"

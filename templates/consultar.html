@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Consultar Chamado</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+  <h2>🔍 Consultar Chamado</h2>
+
+  <form method="post">
+    <label>ID do Chamado:</label>
+    <input type="number" name="id_chamado" required>
+    <button class="btn" type="submit">Consultar</button>
+  </form>
+
+  {% if chamado %}
+    <div class="card">
+      <h3>Chamado #{{ chamado.id }}</h3>
+      <p><b>Status:</b> {{ chamado.status }}</p>
+      <p><b>Prioridade:</b> {{ chamado.prioridade }}</p>
+      <p><b>Descrição:</b> {{ chamado.descricao }}</p>
+    </div>
+  {% elif chamado is not none %}
+    <p>❌ Chamado não encontrado</p>
+  {% endif %}
+
+  <a href="/" class="link">⬅ Voltar</a>
+</div>
+
+</body>
+</html>
