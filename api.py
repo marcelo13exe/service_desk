@@ -1,20 +1,26 @@
-from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import (
+    FastAPI,
+    Request,
+    Form,
+    HTTPException,
+    Depends
+)
+
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
 
 from pydantic import BaseModel
-
 from passlib.hash import bcrypt
 
 # ✅ Services
 from services_layer import (
     abrir_chamado,
     consultar_chamado,
-    adicionar_comentario_chamado,
-    fechar_chamado
+    listar_meus_chamados,
+    login_usuario
 )
 
 # ✅ Storage
@@ -22,6 +28,9 @@ from storage import (
     criar_usuario,
     buscar_usuario_por_email
 )
+
+# ✅ Segurança
+from security import get_usuario_logado
 
 # ✅ Database
 from database import init_db
@@ -33,7 +42,6 @@ from database import init_db
 app = FastAPI(title="Service Desk Web")
 
 templates = Jinja2Templates(directory="templates")
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -43,7 +51,7 @@ def startup():
 
 
 # -------------------------------
-# ✅ HOME HTML
+# ✅ HOME
 # -------------------------------
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
@@ -80,9 +88,57 @@ def login_web(
 
 
 # -------------------------------
-# ✅ ROTAS HTML
+# ✅ LOGIN HTML
 # -------------------------------
+@app.get("/login", response_class=HTMLResponse)
+def tela_login(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
+
+@app.post("/login-web")
+def login_web(
+    request: Request,
+    email: str = Form(...),
+    senha: str = Form(...)
+):
+    token = login_usuario(email, senha)
+
+    if not token:
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "erro": "Email ou senha inválidos"
+            }
+        )
+
+    response = RedirectResponse("/meus-chamados", status_code=302)
+    response.set_cookie("token", token)
+    return response
+
+
+# -------------------------------
+# ✅ MEUS CHAMADOS (PROTEGIDO)
+# -------------------------------
+@app.get("/meus-chamados", response_class=HTMLResponse)
+def meus_chamados(
+    request: Request,
+    usuario_id: int = Depends(get_usuario_logado)
+):
+    chamados = listar_meus_chamados(usuario_id)
+
+    return templates.TemplateResponse(
+        "meus_chamados.html",
+        {
+            "request": request,
+            "chamados": chamados
+        }
+    )
+
+
+# -------------------------------
+# ✅ ABRIR CHAMADO (PROTEGIDO)
+# -------------------------------
 @app.get("/abrir", response_class=HTMLResponse)
 def tela_abrir(request: Request):
     return templates.TemplateResponse("abrir_chamado.html", {"request": request})
@@ -93,7 +149,7 @@ def abrir(
     request: Request,
     descricao: str = Form(...),
     prioridade: str = Form(...),
-    usuario_id: int = Form(...)
+    usuario_id: int = Depends(get_usuario_logado)
 ):
     chamado_id = abrir_chamado(descricao, prioridade, usuario_id)
 
@@ -106,6 +162,9 @@ def abrir(
     )
 
 
+# -------------------------------
+# ✅ CONSULTAR CHAMADO
+# -------------------------------
 @app.get("/consultar", response_class=HTMLResponse)
 def tela_consultar(request: Request):
     return templates.TemplateResponse("consultar.html", {"request": request})
@@ -120,52 +179,8 @@ def consultar(
 
     return templates.TemplateResponse(
         "consultar.html",
-        {"request": request, "chamado": chamado}
+        {
+            "request": request,
+            "chamado": chamado
+        }
     )
-
-
-# -------------------------------
-# ✅ MODELOS JSON (API)
-# -------------------------------
-
-class UsuarioCreate(BaseModel):
-    nome: str
-    email: str
-    senha: str
-
-
-class LoginData(BaseModel):
-    email: str
-    senha: str
-
-
-# -------------------------------
-# ✅ API USUÁRIOS
-# -------------------------------
-
-@app.post("/usuarios")
-def registrar_usuario(dados: UsuarioCreate):
-
-    existente = buscar_usuario_por_email(dados.email)
-    if existente:
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-
-    senha_hash = bcrypt.hash(dados.senha)
-
-    criar_usuario(dados.nome, dados.email, senha_hash)
-
-    return {"msg": "Usuário criado com sucesso"}
-
-
-@app.post("/login")
-def login(dados: LoginData):
-
-    usuario = buscar_usuario_por_email(dados.email)
-
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-
-    if not bcrypt.verify(dados.senha, usuario["senha_hash"]):
-        raise HTTPException(status_code=401, detail="Senha inválida")
-
-    return {"msg": "Login OK", "usuario_id": usuario["id"]}
